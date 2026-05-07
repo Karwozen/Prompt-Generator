@@ -1,0 +1,6 @@
+{
+  "name": "CRO Prompt Generator",
+  "description": "Transforms basic client info into structured, high-conversion prompts for AI design tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
