@@ -9,14 +9,16 @@ import {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const VIBE_OPTIONS = [
-  { id: 'Minimalista', desc: 'Clean, focado no essencial' },
-  { id: 'Brutalista', desc: 'Forte, tipografia marcante' },
-  { id: 'High-Tech', desc: 'Dark mode, neon e grids' },
-  { id: 'Luxo', desc: 'Elegante, serifadas, ouro/prata' },
-  { id: 'Orgânico', desc: 'Cores terrosas, formas fluidas' }
+  { id: '🤖 IA Automática', desc: 'A IA decide o melhor estilo', preview: <div className="w-full h-10 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-md border border-indigo-500/30 flex items-center justify-center"><Sparkles className="w-4 h-4 text-indigo-400" /></div> },
+  { id: 'Minimalista', desc: 'Clean, focado no essencial', preview: <div className="w-full h-10 bg-slate-50 flex items-center justify-center p-2 rounded-md"><div className="w-1/2 h-1.5 bg-slate-200 rounded-full"></div></div> },
+  { id: 'Brutalista', desc: 'Forte, tipografia marcante', preview: <div className="w-full h-10 bg-yellow-400 border-2 border-slate-900 flex items-center justify-center rounded-sm"><span className="text-slate-900 font-black text-xs uppercase uppercase">Bold</span></div> },
+  { id: 'High-Tech', desc: 'Dark mode, neon e grids', preview: <div className="w-full h-10 bg-slate-950 border border-cyan-500/50 flex items-center justify-center rounded-md relative overflow-hidden"><div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.1)_1px,transparent_1px)] bg-[size:4px_4px]"></div><div className="w-1/2 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.8)] relative z-10"></div></div> },
+  { id: 'Luxo', desc: 'Elegante, serifadas, ouro', preview: <div className="w-full h-10 bg-[#1a1a1a] border border-yellow-700/50 flex items-center justify-center rounded-md"><span className="text-yellow-600 font-serif font-bold text-lg leading-none">A</span></div> },
+  { id: 'Orgânico', desc: 'Cores terrosas, fluidas', preview: <div className="w-full h-10 bg-[#f4f1ea] border border-[#d2c9b6] flex items-center justify-center overflow-hidden rounded-xl"><div className="w-5 h-5 bg-[#8b7e66] rounded-full mix-blend-multiply opacity-50 blur-[1px] -translate-x-1"></div><div className="w-5 h-5 bg-[#78826b] rounded-full mix-blend-multiply opacity-50 blur-[1px] translate-x-1"></div></div> }
 ];
 
 const COLOR_PALETTES = [
+  { id: '🎨 Extração Automática', colors: [] },
   { id: 'Ocean Blue', colors: ['#0369a1', '#e0f2fe'] },
   { id: 'Midnight Gold', colors: ['#1e293b', '#fbbf24'] },
   { id: 'Forest Green', colors: ['#166534', '#dcfce7'] },
@@ -44,29 +46,39 @@ async function generateCroPrompt(data: any): Promise<GenerationResult> {
   const prompt = `Você é um Especialista em Conversão (CRO) e UI/UX Designer Sênior com capacidade de navegação em tempo real.
 
 SUA TAREFA OBRIGATÓRIA:
-1. Use a ferramenta de busca para acessar e analisar o conteúdo real destes links:
+1. Use a ferramenta de busca para analisar o conteúdo real destes links (busque a identidade visual, as cores da logo/fotos, e tom de voz):
    - Instagram: ${data.instagram}
    - Google Maps: ${data.maps}
 
 2. Extraia dados REAIS sobre:
-   - Estética visual das fotos (Instagram).
-   - Tom de voz das legendas.
+   - Estética visual das fotos do instagram/site.
+   - Identidade visual / predominância de cores nas redes.
+   - Tom de voz das legendas e comunicações.
    - Volume e sentimento das avaliações dos clientes (Maps).
-   - Serviços mais elogiados.
 
-3. Com base no que você ENCONTROU nos links e nos inputs abaixo, gere um prompt de alta conversão para o site.
+3. ESTRATÉGIA DE DESIGN (Baseada nos Inputs):
+   - Vibe Visual Selecionada: ${data.vibe}
+   - Paleta de Cores Fornecida: ${data.colors}
+   * SE a Vibe for "🤖 IA Automática", deduzir o melhor estilo com base na identidade visual percebida nos links.
+   * SE a Cor for "🎨 Extração Automática", identifique as cores predominantes encontradas nos links para criar a paleta ideal.
 
-INPUTS DE DESIGN & ESTRATÉGIA:
+4. CRIE UM PROMPT DE GERAÇÃO PARA UI PARA O USUÁRIO FINAL COPIAR E COLAR
+   O prompt gerado DEVE EXIGIR que a IA que for construir as telas inclua:
+   - Arquitetura de Conversão Profissional: Seções de Hero, Bento Grids de benefícios, Prova Social dinâmica (slider), FAQ estratégico e Rodapé focado em CTA.
+   - UX Avançada: Sugestões de micro-interações, animações de scroll usando Framer Motion, e carregamento otimizado.
+   - Design Trends: Uso de Glassmorphism, tipografia oversized e layouts assimétricos.
+   - Justificativas Críticas: O prompt deve brevemente justificar caso a IA tenha escolhido a Paleta ou a Vibe automaticamente baseado no que encontrou nos links.
+
+INPUTS DE DESIGN & ESTRATÉGIA (O que o usuário forneceu):
 - Nome: ${data.name} | Nicho: ${data.niche}
 - Persona: ${data.audience}
 - Dores Críticas: ${data.pains}
-- Vibe Visual Selecionada: ${data.vibe}
-- Paleta de Cores: ${data.colors}
+- Oferta Irresistível: ${data.offer}
 
 RETORNO:
 Devolva ESTRITAMENTE um objeto JSON. Sem markdown adicional, sem blocos de código \`\`\`json, apenas o JSON bruto na seguinte estrutura:
 {
-  "prompt": "TODO O TEXTO DO PROMPT. Estruturado em Contexto, Tech Stack, Arquitetura (usando Copy AIDA/PAS) e UX Behaviors.",
+  "prompt": "TODO O TEXTO DO PROMPT. Estruturado em Contexto, Tech Stack, Arquitetura (usando Copy AIDA/PAS) e UX Behaviors. Lembre de justificar as escolhas de cores/vibe (se automáticas) no início.",
   "designSystem": {
     "colors": [
       {"name": "Primary", "hex": "#HEX"},
@@ -111,7 +123,7 @@ Devolva ESTRITAMENTE um objeto JSON. Sem markdown adicional, sem blocos de códi
 export default function App() {
   const [formData, setFormData] = useState({ 
     name: '', niche: '', instagram: '', maps: '', 
-    vibe: 'Minimalista', colors: 'Ocean Blue',
+    vibe: '🤖 IA Automática', colors: '🎨 Extração Automática',
     audience: '', pains: '', offer: '',
     customColors: ['#6366f1', '#a855f7']
   });
@@ -211,17 +223,29 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
-                      <Instagram className="w-3 h-3 text-pink-400" /> Link Instagram
-                    </label>
-                    <input type="text" value={formData.instagram} onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="Ex: @acmecorp" />
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-pink-500/10 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="relative">
+                      <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
+                        <Instagram className="w-3 h-3 text-pink-400" /> Link Instagram
+                        <div className="ml-auto text-[8px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30 flex items-center gap-1">
+                          <Wand2 className="w-2 h-2" /> SCRAPER TARGET
+                        </div>
+                      </label>
+                      <input type="text" value={formData.instagram} onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors" placeholder="Ex: @acmecorp" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
-                      <MapPin className="w-3 h-3 text-red-500" /> Link Google Maps
-                    </label>
-                    <input type="text" value={formData.maps} onChange={(e) => setFormData(prev => ({ ...prev, maps: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="Ex: maps.app.goo.gl/..." />
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-red-500/10 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="relative">
+                      <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3 text-red-500" /> Link Google Maps
+                        <div className="ml-auto text-[8px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30 flex items-center gap-1">
+                          <Wand2 className="w-2 h-2" /> SCRAPER TARGET
+                        </div>
+                      </label>
+                      <input type="text" value={formData.maps} onChange={(e) => setFormData(prev => ({ ...prev, maps: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500/50 transition-colors" placeholder="Ex: maps.app.goo.gl/..." />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -274,17 +298,20 @@ export default function App() {
                         <div 
                           key={vibe.id}
                           onClick={() => setFormData(prev => ({ ...prev, vibe: vibe.id }))}
-                          className={`cursor-pointer p-3 rounded-xl border transition-all ${
+                          className={`cursor-pointer p-3 rounded-xl border transition-all flex flex-col gap-3 ${
                             formData.vibe === vibe.id 
-                              ? 'bg-indigo-500/10 border-indigo-500/50' 
+                              ? 'bg-indigo-500/10 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.15)]' 
                               : 'bg-slate-950/50 border-slate-800 hover:border-slate-700'
                           }`}
                         >
-                          <div className={`text-xs font-bold mb-1 ${formData.vibe === vibe.id ? 'text-indigo-400' : 'text-slate-300'}`}>
-                            {vibe.id}
-                          </div>
-                          <div className="text-[9px] text-slate-500 leading-tight">
-                            {vibe.desc}
+                          {vibe.preview}
+                          <div>
+                            <div className={`text-xs font-bold mb-0.5 ${formData.vibe === vibe.id ? 'text-indigo-400' : 'text-slate-300'}`}>
+                              {vibe.id}
+                            </div>
+                            <div className="text-[9px] text-slate-500 leading-tight">
+                              {vibe.desc}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -310,13 +337,17 @@ export default function App() {
                              {palette.id}
                            </span>
                            <div className="flex -space-x-1">
-                             {palette.colors.map((color, idx) => (
+                             {palette.colors.length > 0 ? palette.colors.map((color, idx) => (
                                <div 
                                  key={idx} 
                                  className="w-4 h-4 rounded-full border border-slate-800 shadow-sm"
                                  style={{ backgroundColor: color }}
                                />
-                             ))}
+                             )) : (
+                               <div className="w-5 h-5 rounded flex items-center justify-center bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                                 <Wand2 className="w-3 h-3" />
+                               </div>
+                             )}
                            </div>
                          </div>
                        ))}
