@@ -3,10 +3,31 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useState } from 'react';
 import { 
   Loader2, Sparkles, Copy, CheckCircle2, Wand2, 
-  Link as LinkIcon, Users, Flame, Gift, Palette, Code, Layers 
+  MapPin, Instagram, Users, Flame, Gift, Palette, Code, Layers 
 } from 'lucide-react';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+const VIBE_OPTIONS = [
+  { id: 'Minimalista', desc: 'Clean, focado no essencial' },
+  { id: 'Brutalista', desc: 'Forte, tipografia marcante' },
+  { id: 'High-Tech', desc: 'Dark mode, neon e grids' },
+  { id: 'Luxo', desc: 'Elegante, serifadas, ouro/prata' },
+  { id: 'Orgânico', desc: 'Cores terrosas, formas fluidas' }
+];
+
+const COLOR_PALETTES = [
+  { id: 'Ocean Blue', colors: ['#0369a1', '#e0f2fe'] },
+  { id: 'Midnight Gold', colors: ['#1e293b', '#fbbf24'] },
+  { id: 'Forest Green', colors: ['#166534', '#dcfce7'] },
+  { id: 'Vibrant Startup', colors: ['#7c3aed', '#fbcfe8'] },
+  { id: 'Tech Neon', colors: ['#000000', '#22d3ee'] },
+  { id: 'Cyberpunk Pink', colors: ['#171717', '#ec4899'] },
+  { id: 'Sunset Orange', colors: ['#c2410c', '#ffedd5'] },
+  { id: 'Earthy Brown', colors: ['#451a03', '#fef3c7'] },
+  { id: 'Monochrome', colors: ['#171717', '#f5f5f5'] },
+  { id: 'Cherry Red', colors: ['#b91c1c', '#fee2e2'] },
+];
 
 interface DesignSystem {
   colors: { name: string; hex: string }[];
@@ -20,28 +41,32 @@ interface GenerationResult {
 }
 
 async function generateCroPrompt(data: any): Promise<GenerationResult> {
-  const prompt = `Você é um Especialista em Conversão (CRO), Web Scraper Strategist, Designer UI/UX Sênior e Desenvolvedor Full-Stack.
-Sua missão é transformar as informações e referências do cliente em um prompt estruturado de altíssimo nível para IAs geradoras de UI (v0.dev, Cursor, Bolt.new, Framer) e, além disso, extrair um Design System sugerido.
+  const prompt = `Você é um Especialista em Conversão (CRO) e UI/UX Designer Sênior com capacidade de navegação em tempo real.
 
-DADOS DO CLIENTE:
-Nome do Negócio: ${data.name}
-Nicho de Atuação: ${data.niche}
-Links de Referência (Instagram/Maps etc.): ${data.links}
-Vibe Visual Desejada: ${data.vibe}
-Paleta Base Desejada: ${data.colors}
-Público-Alvo (Persona): ${data.audience}
-Principais Dores: ${data.pains}
-Oferta Irresistível: ${data.offer}
+SUA TAREFA OBRIGATÓRIA:
+1. Use a ferramenta de busca para acessar e analisar o conteúdo real destes links:
+   - Instagram: ${data.instagram}
+   - Google Maps: ${data.maps}
 
-INSTRUÇÕES DO SCENARIO:
-1. Web Scraper Strategist: Utilize sua inteligência geral para inferir o que as referências de "Links" indicam sobre o mercado, tom de voz e avaliações do nicho.
-2. Prompt Creation: Escreva o PROMPT PARA IA DE GERAÇÃO estruturado em seções: Contexto, Tech Stack, Arquitetura (usando Copy AIDA/PAS) e UX Behaviors.
-3. Design System Extraction: Defina tipografia, paleta e componentes chave ideais para este projeto.
+2. Extraia dados REAIS sobre:
+   - Estética visual das fotos (Instagram).
+   - Tom de voz das legendas.
+   - Volume e sentimento das avaliações dos clientes (Maps).
+   - Serviços mais elogiados.
+
+3. Com base no que você ENCONTROU nos links e nos inputs abaixo, gere um prompt de alta conversão para o site.
+
+INPUTS DE DESIGN & ESTRATÉGIA:
+- Nome: ${data.name} | Nicho: ${data.niche}
+- Persona: ${data.audience}
+- Dores Críticas: ${data.pains}
+- Vibe Visual Selecionada: ${data.vibe}
+- Paleta de Cores: ${data.colors}
 
 RETORNO:
 Devolva ESTRITAMENTE um objeto JSON. Sem markdown adicional, sem blocos de código \`\`\`json, apenas o JSON bruto na seguinte estrutura:
 {
-  "prompt": "TODO O TEXTO DO PROMPT. Pode incluir quebras de linha com \\n. Detalhe bem a estrutura.",
+  "prompt": "TODO O TEXTO DO PROMPT. Estruturado em Contexto, Tech Stack, Arquitetura (usando Copy AIDA/PAS) e UX Behaviors.",
   "designSystem": {
     "colors": [
       {"name": "Primary", "hex": "#HEX"},
@@ -67,6 +92,7 @@ Devolva ESTRITAMENTE um objeto JSON. Sem markdown adicional, sem blocos de códi
       model: 'gemini-3.1-pro-preview',
       contents: prompt,
       config: {
+        tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
       }
     });
@@ -77,16 +103,17 @@ Devolva ESTRITAMENTE um objeto JSON. Sem markdown adicional, sem blocos de códi
     
     return JSON.parse(resultText) as GenerationResult;
   } catch (error) {
-    console.error('Error generating prompt:', error);
-    throw new Error('Falha ao gerar o prompt. Tente novamente.');
+    console.error('Erro no scraping/geração:', error);
+    throw new Error('Não foi possível acessar os links ou gerar o prompt. Verifique se os links são públicos.');
   }
 }
 
 export default function App() {
   const [formData, setFormData] = useState({ 
-    name: '', niche: '', links: '', 
+    name: '', niche: '', instagram: '', maps: '', 
     vibe: 'Minimalista', colors: 'Ocean Blue',
-    audience: '', pains: '', offer: ''
+    audience: '', pains: '', offer: '',
+    customColors: ['#6366f1', '#a855f7']
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
@@ -107,7 +134,11 @@ export default function App() {
     setActiveTab('prompt');
     
     try {
-      const generated = await generateCroPrompt(formData);
+      const dataToPass = {
+        ...formData,
+        colors: formData.colors === 'Personalizada' ? `Personalizada: ${formData.customColors.join(', ')}` : formData.colors
+      };
+      const generated = await generateCroPrompt(dataToPass);
       setResult(generated);
     } catch (err: any) {
       setError(err.message);
@@ -179,11 +210,19 @@ export default function App() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
-                    <LinkIcon className="w-3 h-3 text-indigo-400" /> Links Scraper (Maps/Insta/Site)
-                  </label>
-                  <input type="text" value={formData.links} onChange={(e) => setFormData(prev => ({ ...prev, links: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="Ex: @acmecorp, Google Maps rating..." />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
+                      <Instagram className="w-3 h-3 text-pink-400" /> Link Instagram
+                    </label>
+                    <input type="text" value={formData.instagram} onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="Ex: @acmecorp" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
+                      <MapPin className="w-3 h-3 text-red-500" /> Link Google Maps
+                    </label>
+                    <input type="text" value={formData.maps} onChange={(e) => setFormData(prev => ({ ...prev, maps: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="Ex: maps.app.goo.gl/..." />
+                  </div>
                 </div>
               </div>
 
@@ -199,10 +238,18 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
-                    <Flame className="w-3 h-3 text-red-400" /> Principais Dores a Resolver
+                  <label className="block text-[10px] uppercase tracking-widest text-red-400 mb-1.5 flex items-center gap-1.5 ml-1">
+                    <Flame className="w-3 h-3" /> Dores Críticas & Desafios de Negócio
                   </label>
-                  <input type="text" value={formData.pains} onChange={(e) => setFormData(prev => ({ ...prev, pains: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="Processos lentos, perda de receita..." />
+                  <textarea 
+                    value={formData.pains} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, pains: e.target.value }))} 
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors resize-none min-h-[120px]" 
+                    placeholder="Ex: O cliente tem um site antigo que não passa confiança? Ele perde vendas por não ter agendamento online? O visual atual afasta o público de luxo?" 
+                  />
+                  <p className="text-[9px] text-slate-500 mt-1.5 italic ml-1">
+                    *Identifique o que impede o cliente de vender mais hoje.
+                  </p>
                 </div>
 
                 <div>
@@ -217,39 +264,114 @@ export default function App() {
               <div className="space-y-4 pt-2">
                 <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 border-b border-slate-800 pb-2 mb-4">3. Design Presets (Client Intel)</div>
                 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-6">
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
+                    <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-3 ml-1 flex items-center gap-1.5">
                       <Layers className="w-3 h-3 text-indigo-400" /> Visual Vibe
                     </label>
-                    <div className="relative">
-                      <select value={formData.vibe} onChange={(e) => setFormData(prev => ({ ...prev, vibe: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 appearance-none cursor-pointer">
-                        <option value="Minimalista">Minimalista</option>
-                        <option value="Brutalista">Brutalista</option>
-                        <option value="High-Tech">High-Tech</option>
-                        <option value="Luxo">Luxo</option>
-                        <option value="Orgânico">Orgânico</option>
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
-                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                      </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                      {VIBE_OPTIONS.map((vibe) => (
+                        <div 
+                          key={vibe.id}
+                          onClick={() => setFormData(prev => ({ ...prev, vibe: vibe.id }))}
+                          className={`cursor-pointer p-3 rounded-xl border transition-all ${
+                            formData.vibe === vibe.id 
+                              ? 'bg-indigo-500/10 border-indigo-500/50' 
+                              : 'bg-slate-950/50 border-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className={`text-xs font-bold mb-1 ${formData.vibe === vibe.id ? 'text-indigo-400' : 'text-slate-300'}`}>
+                            {vibe.id}
+                          </div>
+                          <div className="text-[9px] text-slate-500 leading-tight">
+                            {vibe.desc}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
+
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
+                    <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-3 ml-1 flex items-center gap-1.5">
                       <Palette className="w-3 h-3 text-indigo-400" /> Color Palette
                     </label>
-                     <div className="relative">
-                      <select value={formData.colors} onChange={(e) => setFormData(prev => ({ ...prev, colors: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 appearance-none cursor-pointer">
-                        <option value="Ocean Blue">Ocean Blue</option>
-                        <option value="Midnight Gold">Midnight Gold</option>
-                        <option value="Forest Green">Forest Green</option>
-                        <option value="Vibrant Startup">Vibrant Startup</option>
-                        <option value="Tech Neon">Tech Neon</option>
-                      </select>
-                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
-                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                      </div>
+                     <div className="grid grid-cols-2 gap-2">
+                       {COLOR_PALETTES.map((palette) => (
+                         <div
+                           key={palette.id}
+                           onClick={() => setFormData(prev => ({ ...prev, colors: palette.id }))}
+                           className={`cursor-pointer p-3 rounded-xl border flex items-center justify-between transition-all ${
+                            formData.colors === palette.id
+                              ? 'bg-indigo-500/10 border-indigo-500/50'
+                              : 'bg-slate-950/50 border-slate-800 hover:border-slate-700'
+                           }`}
+                         >
+                           <span className={`text-xs font-bold ${formData.colors === palette.id ? 'text-indigo-400' : 'text-slate-300'}`}>
+                             {palette.id}
+                           </span>
+                           <div className="flex -space-x-1">
+                             {palette.colors.map((color, idx) => (
+                               <div 
+                                 key={idx} 
+                                 className="w-4 h-4 rounded-full border border-slate-800 shadow-sm"
+                                 style={{ backgroundColor: color }}
+                               />
+                             ))}
+                           </div>
+                         </div>
+                       ))}
+                       
+                       {/* Custom Color Option */}
+                        <div
+                         onClick={() => setFormData(prev => ({ ...prev, colors: 'Personalizada' }))}
+                         className={`cursor-pointer p-3 rounded-xl border flex flex-col justify-center transition-all ${
+                          formData.colors === 'Personalizada'
+                            ? 'bg-indigo-500/10 border-indigo-500/50'
+                            : 'bg-slate-950/50 border-slate-800 hover:border-slate-700'
+                         }`}
+                       >
+                         <div className="flex items-center justify-between">
+                           <span className={`text-xs font-bold ${formData.colors === 'Personalizada' ? 'text-indigo-400' : 'text-slate-300'}`}>
+                             Personalizada
+                           </span>
+                           {formData.colors !== 'Personalizada' && (
+                             <div className="flex -space-x-1">
+                               <div className="w-4 h-4 rounded-full border border-slate-800 shadow-sm bg-gradient-to-br from-indigo-500 to-purple-500" />
+                               <div className="w-4 h-4 rounded-full border border-slate-800 shadow-sm bg-gradient-to-br from-pink-500 to-orange-400" />
+                             </div>
+                           )}
+                         </div>
+                         {formData.colors === 'Personalizada' && (
+                           <div className="flex gap-2 mt-3" onClick={e => e.stopPropagation()}>
+                             <div className="flex flex-col flex-1 gap-1">
+                               <label className="text-[9px] text-slate-500 font-medium">Cor 1</label>
+                               <input 
+                                 type="color" 
+                                 value={formData.customColors[0]} 
+                                 onChange={(e) => {
+                                   const newColors = [...formData.customColors];
+                                   newColors[0] = e.target.value;
+                                   setFormData(prev => ({ ...prev, customColors: newColors }));
+                                 }} 
+                                 className="w-full h-8 rounded cursor-pointer border-0 bg-transparent p-0" 
+                               />
+                             </div>
+                             <div className="flex flex-col flex-1 gap-1">
+                               <label className="text-[9px] text-slate-500 font-medium">Cor 2</label>
+                               <input 
+                                 type="color" 
+                                 value={formData.customColors[1]} 
+                                 onChange={(e) => {
+                                   const newColors = [...formData.customColors];
+                                   newColors[1] = e.target.value;
+                                   setFormData(prev => ({ ...prev, customColors: newColors }));
+                                 }} 
+                                 className="w-full h-8 rounded cursor-pointer border-0 bg-transparent p-0" 
+                               />
+                             </div>
+                           </div>
+                         )}
+                       </div>
                     </div>
                   </div>
                 </div>
