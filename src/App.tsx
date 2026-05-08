@@ -1,9 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import { motion, AnimatePresence } from 'motion/react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { 
   Loader2, Sparkles, Copy, CheckCircle2, Wand2, 
-  MapPin, Instagram, Users, Flame, Gift, Palette, Code, Layers 
+  MapPin, Instagram, Users, Flame, Gift, Palette, Code, Layers,
+  Phone, Plus, CheckSquare, FileJson, Image as ImageIcon, Trash2
 } from 'lucide-react';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -38,71 +39,122 @@ interface DesignSystem {
 }
 
 interface GenerationResult {
-  prompt: string;
-  designSystem: DesignSystem;
+  enhancedPrompt: string;
+  designJson: any;
 }
 
 async function generateCroPrompt(data: any): Promise<GenerationResult> {
-  const prompt = `Você é um Especialista em Conversão (CRO) e UI/UX Designer Sênior com capacidade de navegação em tempo real.
+  const basePrompt = `You are a Master Creative Director and Senior UI/UX Engineer. Your task is to generate a comprehensive prompt for an AI UI Generator (like v0.dev or Cursor) based on the user's inputs, scraped data, and reference images.
 
-SUA TAREFA OBRIGATÓRIA:
-1. Use a ferramenta de busca para analisar o conteúdo real destes links (busque a identidade visual, as cores da logo/fotos, e tom de voz):
-   - Instagram: ${data.instagram}
-   - Google Maps: ${data.maps}
+You MUST format your entire response exactly like the TEMPLATE below. Replace all the content inside the template with the specific details of the user's brand, niche, and selected sections. Do not output anything outside of this format.
 
-2. Extraia dados REAIS sobre:
-   - Estética visual das fotos do instagram/site.
-   - Identidade visual / predominância de cores nas redes.
-   - Tom de voz das legendas e comunicações.
-   - Volume e sentimento das avaliações dos clientes (Maps).
+USER INPUTS:
+Brand: ${data.name || '[Insert dynamic brand]'}
+Niche: ${data.niche || '[Insert dynamic niche]'}
+Persona: ${data.audience || 'Not provided'}
+Offer: ${data.offer || 'Not provided'}
+WhatsApp: ${data.whatsapp || 'Not provided'}
+Sections Requested: ${data.sections.join(', ')}
+${data.imageBase64 ? 'Visual Guidelines: Extracted from the provided image.' : 'Visual Guidelines: Extracted from the provided links (Instagram: ' + (data.instagram || 'N/A') + ', Maps: ' + (data.maps || 'N/A') +').'}
 
-3. ESTRATÉGIA DE DESIGN (Baseada nos Inputs):
-   - Vibe Visual Selecionada: ${data.vibe}
-   - Paleta de Cores Fornecida: ${data.colors}
-   * SE a Vibe for "🤖 IA Automática", deduzir o melhor estilo com base na identidade visual percebida nos links.
-   * SE a Cor for "🎨 Extração Automática", identifique as cores predominantes encontradas nos links para criar a paleta ideal.
+TARGET OUTPUT TEMPLATE (Follow this structure perfectly, adapting colors, fonts, copy, and sections to the user's specific business):
+You are designing a landing page for [Brand Name], a [Niche/Description]. Follow the design.json below as your design system guidelines. The overall aesthetic should feel [Vibe/Mood], trustworthy, and [Adjective].
 
-4. CRIE UM PROMPT DE GERAÇÃO PARA UI PARA O USUÁRIO FINAL COPIAR E COLAR
-   O prompt gerado DEVE EXIGIR que a IA que for construir as telas inclua:
-   - Arquitetura de Conversão Profissional: Seções de Hero, Bento Grids de benefícios, Prova Social dinâmica (slider), FAQ estratégico e Rodapé focado em CTA.
-   - UX Avançada: Sugestões de micro-interações, animações de scroll usando Framer Motion, e carregamento otimizado.
-   - Design Trends: Uso de Glassmorphism, tipografia oversized e layouts assimétricos.
-   - Justificativas Críticas: O prompt deve brevemente justificar caso a IA tenha escolhido a Paleta ou a Vibe automaticamente baseado no que encontrou nos links.
+Follow instructions below for copy and landing page content.
 
-INPUTS DE DESIGN & ESTRATÉGIA (O que o usuário forneceu):
-- Nome: ${data.name} | Nicho: ${data.niche}
-- Persona: ${data.audience}
-- Dores Críticas: ${data.pains}
-- Oferta Irresistível: ${data.offer}
-
-RETORNO:
-Devolva ESTRITAMENTE um objeto JSON. Sem markdown adicional, sem blocos de código \`\`\`json, apenas o JSON bruto na seguinte estrutura:
+design.json
 {
-  "prompt": "TODO O TEXTO DO PROMPT. Estruturado em Contexto, Tech Stack, Arquitetura (usando Copy AIDA/PAS) e UX Behaviors. Lembre de justificar as escolhas de cores/vibe (se automáticas) no início.",
-  "designSystem": {
+"designPrinciples": {
+"overall": "[Describe overall aesthetic]",
+"keywords": ["[Keyword 1]", "[Keyword 2]", "[...]"],
+"avoid": ["[Avoid 1]", "[Avoid 2]"]
+},
+"colorPalette": {
+"primary": { "main": "[HEX]", "light": "[HEX]", "dark": "[HEX]" },
+"neutral": { "white": "#FFFFFF", "black": "#1A1A1A", "custom": "[HEX]" },
+"accent": { "main": "[HEX]", "secondary": "[HEX]" },
+"usage": { "backgrounds": ["..."], "text": { "headings": "...", "body": "..." }, "buttons": { "primary": "...", "secondary": "..." } }
+},
+"typography": {
+"fontFamilies": { "headings": { "family": "[Suggest Font]", "weight": "..." }, "body": { "family": "[Suggest Font]", "weight": "..." } },
+"scale": { "hero-h1": { "size": "clamp(2.5rem, 5vw, 4rem)" }, "h2": { "size": "clamp(2rem, 4vw, 3rem)" }, "h3": { "size": "1.25rem" }, "body": { "size": "1rem" } }
+},
+"spacing": {
+"philosophy": "Generous, breathing room. White space is a feature.",
+"sectionPadding": { "vertical": "clamp(80px, 10vw, 140px)" }
+},
+"components": {
+"buttons": { "primary": { "background": "[HEX]", "borderRadius": "...", "padding": "..." } },
+"cards": { "default": { "background": "[HEX]", "borderRadius": "...", "shadow": "..." } }
+},
+"animations": {
+"philosophy": "Subtle and purposeful.",
+"microInteractions": { "buttons": "Scale 1.02 on hover", "cards": "Lift on hover" }
+}
+}
+
+BRIEF: [Brand Name] Landing Page
+Create a premium landing page for [Brand Name]. DESIGN SYSTEM REFERENCE: Use the design.json above as the definitive style guide.
+
+SECTIONS:
+[GENERATE THE SECTIONS HERE BASED ON THE USER'S SELECTION. Use the copy framework AIDA/PAS. For each section, provide:]
+Section [X]: [Section Name - e.g., Hero, Services, Location, FAQ, WhatsApp Integration]
+
+Layout: [e.g., 2 columns]
+
+Background: [Color/HEX]
+
+Content: [Specify exactly the H1, H2, Subtitles, and bullet points. Write the actual persuasive copy in Portuguese]
+
+UI Components: [Specify exactly what UI elements to generate, e.g., "Floating WhatsApp Button in the bottom right", "Interactive Map Card", "Bento Grid for Services"]
+
+
+OUTPUT FORMAT (JSON REQUIRED):
+Return STRICTLY a JSON object. Do not format with markdown blocks. Return exactly:
+{
+  "enhancedPrompt": "The FULL output text described in the TARGET OUTPUT TEMPLATE above (the introduction, the stringified design.json block, and the BRIEF sections block).",
+  "designJson": {
     "colors": [
-      {"name": "Primary", "hex": "#HEX"},
-      {"name": "Secondary", "hex": "#HEX"},
-      {"name": "Background", "hex": "#HEX"},
-      {"name": "Accent", "hex": "#HEX"}
+      { "name": "Primary", "hex": "#HEX" },
+      { "name": "Accent", "hex": "#HEX" },
+      { "name": "Background", "hex": "#HEX" }
     ],
     "typography": {
-      "headings": "Nome da Fonte (ex: Playfair Display)",
-      "body": "Nome da Fonte (ex: Inter)"
+      "headings": "Font Family (e.g. Inter)",
+      "body": "Font Family (e.g. Roboto)"
     },
     "components": [
-      "Nome Componente 1 (ex: Bento Grid Diferenciais)",
-      "Nome Componente 2",
-      "Nome Componente 3",
-      "Nome Componente 4"
-    ]
+      "Button",
+      "Card",
+      "Bento Grid"
+    ],
+    "designPrinciples": { ... },
+    "colorPalette": { ... },
+    "spacing": { ... },
+    "animations": { ... }
   }
 }`;
+
+  let finalContents: any;
+
+  if (data.imageBase64) {
+    finalContents = [
+      { text: basePrompt },
+      { 
+        inlineData: {
+          data: data.imageBase64,
+          mimeType: data.imageMimeType
+        }
+      }
+    ];
+  } else {
+    finalContents = basePrompt;
+  }
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3.1-pro-preview',
-      contents: prompt,
+      contents: finalContents,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
@@ -122,23 +174,44 @@ Devolva ESTRITAMENTE um objeto JSON. Sem markdown adicional, sem blocos de códi
 
 export default function App() {
   const [formData, setFormData] = useState({ 
-    name: '', niche: '', instagram: '', maps: '', 
+    name: '', niche: '', instagram: '', maps: '', whatsapp: '',
     vibe: '🤖 IA Automática', colors: '🎨 Extração Automática',
-    audience: '', pains: '', offer: '',
-    customColors: ['#6366f1', '#a855f7']
+    audience: '', offer: '',
+    customColors: ['#6366f1', '#a855f7'],
+    sections: ['Botão WhatsApp', 'Serviços', 'Depoimentos'] as string[],
+    imageBase64: '', imageMimeType: ''
   });
+  const [customSection, setCustomSection] = useState('');
+  const [availableSections, setAvailableSections] = useState([
+     'Portfólio', 'Botão WhatsApp', 'Serviços', 'Localização Maps', 'Horários de Funcionamento', 'Depoimentos', 'FAQ'
+  ]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'prompt' | 'system'>('prompt');
+  const [activeTab, setActiveTab] = useState<'prompt' | 'system' | 'json'>('prompt');
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        const [meta, base64] = base64String.split(',');
+        const mimeType = meta.split(':')[1].split(';')[0];
+        
+        setFormData(prev => ({
+          ...prev,
+          imageBase64: base64,
+          imageMimeType: mimeType
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.niche) {
-      setError('Nome e Nicho são obrigatórios.');
-      return;
-    }
     
     setError('');
     setIsGenerating(true);
@@ -159,9 +232,27 @@ export default function App() {
     }
   };
 
+  const toggleSection = (section: string) => {
+    setFormData(prev => ({
+      ...prev,
+      sections: prev.sections.includes(section) 
+        ? prev.sections.filter(s => s !== section)
+        : [...prev.sections, section]
+    }));
+  };
+
+  const addCustomSection = () => {
+    if (customSection.trim() && !availableSections.includes(customSection.trim())) {
+      const newSection = customSection.trim();
+      setAvailableSections(prev => [...prev, newSection]);
+      setFormData(prev => ({ ...prev, sections: [...prev.sections, newSection] }));
+      setCustomSection('');
+    }
+  };
+
   const handleCopy = () => {
     if (result) {
-      navigator.clipboard.writeText(result.prompt);
+      navigator.clipboard.writeText(result.enhancedPrompt);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -214,21 +305,30 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Negócio / Marca</label>
-                    <input type="text" required value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="Ex: Acme Corp" />
+                    <input type="text" value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="Ex: Acme Corp" />
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Nicho / Vertical</label>
-                    <input type="text" required value={formData.niche} onChange={(e) => setFormData(prev => ({ ...prev, niche: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="Ex: SaaS B2B" />
+                    <input type="text" value={formData.niche} onChange={(e) => setFormData(prev => ({ ...prev, niche: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="Ex: SaaS B2B" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="col-span-1 md:col-span-2 relative group">
+                    <div className="absolute inset-0 bg-emerald-500/10 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="relative">
+                      <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
+                        <Phone className="w-3 h-3 text-emerald-400" /> WhatsApp
+                      </label>
+                      <input type="text" value={formData.whatsapp} onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors" placeholder="Ex: (11) 99999-9999" />
+                    </div>
+                  </div>
                   <div className="relative group">
                     <div className="absolute inset-0 bg-pink-500/10 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div className="relative">
                       <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
                         <Instagram className="w-3 h-3 text-pink-400" /> Link Instagram
-                        <div className="ml-auto text-[8px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30 flex items-center gap-1">
+                        <div className="ml-auto text-[8px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30 flex items-center gap-1 hidden sm:flex">
                           <Wand2 className="w-2 h-2" /> SCRAPER TARGET
                         </div>
                       </label>
@@ -240,7 +340,7 @@ export default function App() {
                     <div className="relative">
                       <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
                         <MapPin className="w-3 h-3 text-red-500" /> Link Google Maps
-                        <div className="ml-auto text-[8px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30 flex items-center gap-1">
+                        <div className="ml-auto text-[8px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30 flex items-center gap-1 hidden sm:flex">
                           <Wand2 className="w-2 h-2" /> SCRAPER TARGET
                         </div>
                       </label>
@@ -250,37 +350,114 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Group 1.5: Image Reference */}
+              <div className="space-y-4 pt-2">
+                <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 border-b border-slate-800 pb-2 mb-4">Referência Visual</div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
+                    <ImageIcon className="w-3 h-3 text-indigo-400" /> Upload de Imagem (Screenshot / Design)
+                  </label>
+                  {!formData.imageBase64 ? (
+                    <div className="relative border-2 border-dashed border-slate-800 rounded-xl bg-slate-950/50 hover:bg-slate-900/50 transition-colors p-4 flex flex-col items-center justify-center cursor-pointer">
+                      <ImageIcon className="w-6 h-6 text-slate-500 mb-2" />
+                      <span className="text-xs text-slate-400 font-medium text-center">Clique para fazer upload ou arraste uma imagem</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleImageUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                    </div>
+                  ) : (
+                     <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-900 p-2 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                           <div className="w-10 h-10 rounded bg-slate-800 overflow-hidden flex-shrink-0">
+                             <img src={`data:${formData.imageMimeType};base64,${formData.imageBase64}`} className="w-full h-full object-cover" alt="Preview" />
+                           </div>
+                           <span className="text-xs text-emerald-400 font-medium">Imagem Carregada</span>
+                        </div>
+                        <button 
+                          type="button" 
+                          className="p-2 text-slate-400 hover:text-red-400 transition-colors bg-slate-950 rounded-lg"
+                          onClick={() => setFormData(p => ({...p, imageBase64: '', imageMimeType: ''}))}
+                        >
+                           <Trash2 className="w-4 h-4" />
+                        </button>
+                     </div>
+                  )}
+                </div>
+              </div>
+
               {/* Group 2: Strategy */}
               <div className="space-y-4 pt-2">
                 <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 border-b border-slate-800 pb-2 mb-4">2. Copywriting Strategy</div>
                 
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
-                    <Users className="w-3 h-3 text-indigo-400" /> Persona Alvo
-                  </label>
-                  <input type="text" value={formData.audience} onChange={(e) => setFormData(prev => ({ ...prev, audience: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="C-Levels de empresas Tech" />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-red-400 mb-1.5 flex items-center gap-1.5 ml-1">
-                    <Flame className="w-3 h-3" /> Dores Críticas & Desafios de Negócio
+                    <Users className="w-3 h-3 text-indigo-400" /> Persona Alvo Detalhada
                   </label>
                   <textarea 
-                    value={formData.pains} 
-                    onChange={(e) => setFormData(prev => ({ ...prev, pains: e.target.value }))} 
-                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors resize-none min-h-[120px]" 
-                    placeholder="Ex: O cliente tem um site antigo que não passa confiança? Ele perde vendas por não ter agendamento online? O visual atual afasta o público de luxo?" 
+                    value={formData.audience} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, audience: e.target.value }))} 
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors resize-none min-h-[80px]" 
+                    placeholder="Especifique quem é o comprador (ex: Idade, Interesses, Classe Social, Comportamento)" 
                   />
-                  <p className="text-[9px] text-slate-500 mt-1.5 italic ml-1">
-                    *Identifique o que impede o cliente de vender mais hoje.
-                  </p>
                 </div>
 
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
                     <Gift className="w-3 h-3 text-emerald-400" /> Oferta Irresistível (Hook)
                   </label>
-                  <input type="text" value={formData.offer} onChange={(e) => setFormData(prev => ({ ...prev, offer: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors" placeholder="Diagnóstico gratuito + eBook" />
+                  <input type="text" value={formData.offer} onChange={(e) => setFormData(prev => ({ ...prev, offer: e.target.value }))} className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors" placeholder="Diagnóstico gratuito + eBook" />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-indigo-400 mb-2 ml-1 flex items-center gap-1.5">
+                    <CheckSquare className="w-3 h-3" /> Arquitetura do Site (Seções)
+                  </label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {availableSections.map((section) => {
+                      const isSelected = formData.sections.includes(section);
+                      return (
+                        <button
+                          type="button"
+                          key={section}
+                          onClick={() => toggleSection(section)}
+                          className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-colors flex items-center gap-1.5 ${
+                            isSelected 
+                              ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' 
+                              : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                          }`}
+                        >
+                          {isSelected && <CheckCircle2 className="w-3 h-3" />}
+                          {section}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={customSection}
+                      onChange={(e) => setCustomSection(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addCustomSection();
+                        }
+                      }}
+                      className="flex-grow bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500/50 transition-colors" 
+                      placeholder="Adicionar customizada..." 
+                    />
+                    <button
+                      type="button"
+                      onClick={addCustomSection}
+                      disabled={!customSection.trim()}
+                      className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl px-3 py-2 flex items-center justify-center transition-colors shadow-lg shadow-indigo-500/20 disabled:shadow-none"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -464,6 +641,13 @@ export default function App() {
                     <Palette className="w-3.5 h-3.5" />
                     Design System
                   </button>
+                  <button 
+                    onClick={() => setActiveTab('json')}
+                    className={`pb-3 text-xs tracking-widest uppercase font-bold transition-all border-b-2 flex items-center gap-2 ${activeTab === 'json' ? 'text-indigo-400 border-indigo-400' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                  >
+                    <FileJson className="w-3.5 h-3.5" />
+                    Extracted JSON
+                  </button>
                 </div>
               
               <AnimatePresence>
@@ -518,7 +702,17 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     className="font-mono text-[13px] leading-relaxed text-slate-300 whitespace-pre-wrap select-text max-w-4xl mx-auto"
                   >
-                    {result.prompt}
+                    {result.enhancedPrompt}
+                  </motion.div>
+                )}
+
+                {!isGenerating && result && activeTab === 'json' && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="font-mono text-[11px] leading-relaxed text-indigo-300 bg-slate-950 p-6 rounded-2xl border border-slate-800 overflow-x-auto w-full"
+                  >
+                    <pre><code>{JSON.stringify(result.designJson, null, 2)}</code></pre>
                   </motion.div>
                 )}
 
@@ -529,67 +723,77 @@ export default function App() {
                     className="max-w-4xl mx-auto space-y-12 pb-8"
                   >
                     {/* Colors */}
-                    <section>
-                       <div className="flex items-center gap-3 border-b border-slate-800 pb-3 mb-6">
-                         <Palette className="w-5 h-5 text-indigo-400" />
-                         <h3 className="text-lg font-bold text-white tracking-wide">Color Foundation</h3>
-                       </div>
-                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                         {result.designSystem.colors.map((c, i) => (
-                           <div key={i} className="group bg-slate-950 border border-slate-800 rounded-2xl p-3 flex flex-col gap-3 hover:border-slate-700 transition-colors">
-                              <div className="w-full h-20 rounded-xl shadow-inner relative overflow-hidden" style={{backgroundColor: c.hex}}>
-                                 <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent"></div>
-                              </div>
-                              <div className="px-1">
-                                <div className="text-xs text-slate-400 font-medium mb-0.5">{c.name}</div>
-                                <div className="text-sm font-mono text-white font-bold">{c.hex}</div>
-                              </div>
-                           </div>
-                         ))}
-                       </div>
-                    </section>
+                    {result.designJson?.colors && Array.isArray(result.designJson.colors) ? (
+                      <section>
+                         <div className="flex items-center gap-3 border-b border-slate-800 pb-3 mb-6">
+                           <Palette className="w-5 h-5 text-indigo-400" />
+                           <h3 className="text-lg font-bold text-white tracking-wide">Color Foundation</h3>
+                         </div>
+                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                           {result.designJson.colors.map((c: any, i: number) => (
+                             <div key={i} className="group bg-slate-950 border border-slate-800 rounded-2xl p-3 flex flex-col gap-3 hover:border-slate-700 transition-colors">
+                                <div className="w-full h-20 rounded-xl shadow-inner relative overflow-hidden" style={{backgroundColor: c.hex}}>
+                                   <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent"></div>
+                                </div>
+                                <div className="px-1">
+                                  <div className="text-xs text-slate-400 font-medium mb-0.5">{c.name}</div>
+                                  <div className="text-sm font-mono text-white font-bold">{c.hex}</div>
+                                </div>
+                             </div>
+                           ))}
+                         </div>
+                      </section>
+                    ) : (
+                      <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl text-slate-400 text-sm text-center">
+                        Nenhuma paleta estruturada encontrada. Verifique a aba Extracted JSON.
+                      </div>
+                    )}
 
                     {/* Typography */}
-                    <section>
-                       <div className="flex items-center gap-3 border-b border-slate-800 pb-3 mb-6">
-                         <div className="w-5 h-5 text-indigo-400 flex items-center justify-center font-serif text-lg leading-none">Aa</div>
-                         <h3 className="text-lg font-bold text-white tracking-wide">Typography Hierarchy</h3>
-                       </div>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
-                             <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Headings & Display</div>
-                             <div className="text-3xl text-white mb-2" style={{ fontFamily: result.designSystem.typography.headings }}>
-                               Aestetica Magna
-                             </div>
-                             <div className="text-xs font-mono text-indigo-400">{result.designSystem.typography.headings}</div>
-                          </div>
-                          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 flex flex-col justify-center">
-                             <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Body & UI Text</div>
-                             <p className="text-sm text-slate-300 mb-4 leading-relaxed" style={{ fontFamily: result.designSystem.typography.body }}>
-                               Good design is making something intelligible and memorable. Great design is making something memorable and meaningful.
-                             </p>
-                             <div className="text-xs font-mono text-indigo-400 mt-auto">{result.designSystem.typography.body}</div>
-                          </div>
-                       </div>
-                    </section>
+                    {result.designJson?.typography && typeof result.designJson.typography === 'object' && (
+                      <section>
+                         <div className="flex items-center gap-3 border-b border-slate-800 pb-3 mb-6">
+                           <div className="w-5 h-5 text-indigo-400 flex items-center justify-center font-serif text-lg leading-none">Aa</div>
+                           <h3 className="text-lg font-bold text-white tracking-wide">Typography Hierarchy</h3>
+                         </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
+                               <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Headings & Display</div>
+                               <div className="text-3xl text-white mb-2" style={{ fontFamily: result.designJson.typography.headings }}>
+                                 Aestetica Magna
+                               </div>
+                               <div className="text-xs font-mono text-indigo-400">{result.designJson.typography.headings}</div>
+                            </div>
+                            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 flex flex-col justify-center">
+                               <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Body & UI Text</div>
+                               <p className="text-sm text-slate-300 mb-4 leading-relaxed" style={{ fontFamily: result.designJson.typography.body }}>
+                                 Good design is making something intelligible and memorable. Great design is making something memorable and meaningful.
+                               </p>
+                               <div className="text-xs font-mono text-indigo-400 mt-auto">{result.designJson.typography.body}</div>
+                            </div>
+                         </div>
+                      </section>
+                    )}
 
                     {/* Components */}
-                    <section>
-                       <div className="flex items-center gap-3 border-b border-slate-800 pb-3 mb-6">
-                         <Layers className="w-5 h-5 text-indigo-400" />
-                         <h3 className="text-lg font-bold text-white tracking-wide">UI Architecture Elements</h3>
-                       </div>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {result.designSystem.components.map((comp, i) => (
-                             <div key={i} className="flex items-center gap-4 bg-slate-950 border border-slate-800 rounded-xl p-4">
-                                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                                  <span className="text-indigo-400 font-mono text-[10px] font-bold">0{i+1}</span>
-                                </div>
-                                <span className="text-sm text-slate-200 font-medium">{comp}</span>
-                             </div>
-                          ))}
-                       </div>
-                    </section>
+                    {result.designJson?.components && Array.isArray(result.designJson.components) && (
+                      <section>
+                         <div className="flex items-center gap-3 border-b border-slate-800 pb-3 mb-6">
+                           <Layers className="w-5 h-5 text-indigo-400" />
+                           <h3 className="text-lg font-bold text-white tracking-wide">UI Architecture Elements</h3>
+                         </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {result.designJson.components.map((comp: any, i: number) => (
+                               <div key={i} className="flex items-center gap-4 bg-slate-950 border border-slate-800 rounded-xl p-4">
+                                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                                    <span className="text-indigo-400 font-mono text-[10px] font-bold">0{i+1}</span>
+                                  </div>
+                                  <span className="text-sm text-slate-200 font-medium">{comp}</span>
+                               </div>
+                            ))}
+                         </div>
+                      </section>
+                    )}
                   </motion.div>
                 )}
              </div>
