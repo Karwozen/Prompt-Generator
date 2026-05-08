@@ -1,11 +1,12 @@
 import { GoogleGenAI } from '@google/genai';
 import { motion, AnimatePresence } from 'motion/react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Loader2, Sparkles, Copy, CheckCircle2, Wand2, 
   MapPin, Instagram, Users, Flame, Gift, Palette, Code, Layers,
-  Phone, Plus, CheckSquare, FileJson, Image as ImageIcon, Trash2
+  Phone, Plus, CheckSquare, FileJson, Image as ImageIcon, Trash2, Database, Upload, BookOpen
 } from 'lucide-react';
+import { supabase } from './lib/supabase';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -44,11 +45,18 @@ interface GenerationResult {
 }
 
 async function generateCroPrompt(data: any): Promise<GenerationResult> {
+  const vaultContent = data.vaultReferences?.length > 0 ? `
+KNOWLEDGE BASE (YOUR REFERENCE BRAIN):
+Below are the exact code snippets, design systems, and assets from the user's private vault. You MUST use these as your primary truth and reference for formatting, styling, and coding practices when generating the final prompt.
+
+${data.vaultReferences.map((ref: any) => `File: ${ref.file_name}\nContent:\n${ref.url ? `Asset URL: ${ref.url}` : ref.content}`).join('\n\n')}
+` : '';
+
   const basePrompt = `I am writing a prompt to use in an AI agent specialized in designing beautiful landing pages (like Replit Design Mode, v0.dev, or Cursor). In addition to React/Shadcn/Tailwind code generation, this agent can also generate components and UI structures.
 
 I need to give enough context to it so that it generates a design that matches my expectations.
 You are a Master Creative Director and Senior UI/UX Engineer. Your task is to generate this comprehensive prompt based on the user's inputs and reference images.
-
+${vaultContent}
 USER INPUTS (Context for generation):
 
 Brand Name: ${data.name || '[Insert dynamic brand]'}
@@ -196,7 +204,8 @@ export default function App() {
     audience: '', offer: '',
     customColors: ['#6366f1', '#a855f7'],
     sections: ['Botão WhatsApp', 'Serviços', 'Depoimentos'] as string[],
-    imageBase64: '', imageMimeType: ''
+    imageBase64: '', imageMimeType: '',
+    selectedVaultFiles: [] as any[]
   });
   const [customSection, setCustomSection] = useState('');
   const [availableSections, setAvailableSections] = useState([
@@ -207,6 +216,109 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'prompt' | 'system' | 'json'>('prompt');
+  
+  // Vault state
+  const [isVaultOpen, setIsVaultOpen] = useState(false);
+  const [vaultFiles, setVaultFiles] = useState<any[]>([]);
+  const [uploadProgress, setUploadProgress] = useState('');
+  const [isLoadingVault, setIsLoadingVault] = useState(false);
+
+  useEffect(() => {
+    fetchVaultFiles();
+  }, []);
+
+  const fetchVaultFiles = async () => {
+    if (!supabase) return;
+    setIsLoadingVault(true);
+    try {
+      const { data, error } = await supabase
+        .from('knowledge_base')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setVaultFiles(data || []);
+    } catch (err) {
+      console.error('Error fetching vault:', err);
+    } finally {
+      setIsLoadingVault(false);
+    }
+  };
+
+  const uploadFolderToVault = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!supabase) {
+      alert('Configuração do Supabase ausente. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nas variáveis de ambiente.');
+      return;
+    }
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      let uploadedCount = 0;
+      const totalCount = files.length;
+      setUploadProgress(`Salvando arquivo 0 de ${totalCount}...`);
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileName = file.webkitRelativePath || file.name;
+        const projectName = fileName.split('/')[0] || 'Unknown Project';
+
+        setUploadProgress(`Salvando arquivo ${i + 1} de ${totalCount}...`);
+
+        if (file.name.match(/\.(json|tsx|ts|jsx|js|css|txt|md|html)$/i)) {
+          const text = await file.text();
+          await supabase.from('knowledge_base').insert([
+            {
+              project_name: projectName,
+              file_name: fileName,
+              file_type: 'code',
+              content: text
+            }
+          ]);
+        } else if (file.name.match(/\.(png|jpg|jpeg|svg|webp|gif)$/i)) {
+          const timestamp = new Date().getTime();
+          const storagePath = `${projectName}/${timestamp}_${file.name}`;
+          
+          const { data, error } = await supabase.storage
+            .from('brand_assets')
+            .upload(storagePath, file);
+
+          if (data) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('brand_assets')
+              .getPublicUrl(storagePath);
+
+            await supabase.from('knowledge_base').insert([
+              {
+                project_name: projectName,
+                file_name: fileName,
+                file_type: 'image',
+                url: publicUrl
+              }
+            ]);
+          }
+        }
+        uploadedCount++;
+      }
+      setUploadProgress('');
+      fetchVaultFiles();
+    } catch (err: any) {
+      console.error('Upload failed', err);
+      setUploadProgress(`Erro no upload: ${err.message}`);
+      setTimeout(() => setUploadProgress(''), 3000);
+    }
+  };
+
+  const toggleVaultFile = (file: any) => {
+    setFormData(prev => {
+      const isSelected = prev.selectedVaultFiles.some(f => f.id === file.id);
+      if (isSelected) {
+        return { ...prev, selectedVaultFiles: prev.selectedVaultFiles.filter(f => f.id !== file.id) };
+      } else {
+        return { ...prev, selectedVaultFiles: [...prev.selectedVaultFiles, file] };
+      }
+    });
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -238,7 +350,8 @@ export default function App() {
     try {
       const dataToPass = {
         ...formData,
-        colors: formData.colors === 'Personalizada' ? `Personalizada: ${formData.customColors.join(', ')}` : formData.colors
+        colors: formData.colors === 'Personalizada' ? `Personalizada: ${formData.customColors.join(', ')}` : formData.colors,
+        vaultReferences: formData.selectedVaultFiles
       };
       const generated = await generateCroPrompt(dataToPass);
       setResult(generated);
@@ -286,6 +399,13 @@ export default function App() {
           <span className="text-lg font-bold tracking-tight text-white">PROMPT<span className="text-indigo-400">ARCHITECT</span> <span className="text-xs font-mono text-slate-500 font-normal ml-2 tracking-widest hidden md:inline-block">/ STRATEGIST</span></span>
         </div>
         <div className="hidden md:flex items-center gap-6">
+          <button 
+            onClick={() => setIsVaultOpen(true)}
+            className="flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors"
+          >
+            <Database className="w-4 h-4" />
+            Knowledge Vault
+          </button>
           <div className="flex gap-4 text-sm font-medium text-slate-400">
             <a href="#" className="text-indigo-400 border-b-2 border-indigo-500 pb-1">Intelligence</a>
             <a href="#" className="hover:text-slate-200 transition-colors">Campaigns</a>
@@ -367,9 +487,38 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Group 1.5: Image Reference */}
+              {/* Group 1.5: Image Reference and Vault */}
               <div className="space-y-4 pt-2">
-                <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 border-b border-slate-800 pb-2 mb-4">Referência Visual</div>
+                <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 border-b border-slate-800 pb-2 mb-4">Referências Adicionais</div>
+                
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-indigo-400 mb-2 ml-1 flex items-center gap-1.5">
+                    <BookOpen className="w-3 h-3" /> 📚 Referências do Vault
+                  </label>
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 max-h-40 overflow-y-auto custom-scrollbar">
+                    {vaultFiles.length === 0 ? (
+                      <div className="text-xs text-slate-500 text-center py-4">Nenhum arquivo no cofre.</div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {vaultFiles.map(file => (
+                          <label key={file.id} className="flex items-center gap-2 cursor-pointer group">
+                            <input 
+                              type="checkbox" 
+                              checked={formData.selectedVaultFiles.some(f => f.id === file.id)}
+                              onChange={() => toggleVaultFile(file)}
+                              className="rounded border-slate-700 bg-slate-900 text-indigo-500 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                            <div className="flex-1 truncate">
+                              <p className="text-xs text-slate-300 group-hover:text-indigo-300 transition-colors truncate">{file.file_name}</p>
+                              <p className="text-[10px] text-slate-500">{file.project_name} - {file.file_type}</p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 ml-1 flex items-center gap-1.5">
                     <ImageIcon className="w-3 h-3 text-indigo-400" /> Upload de Imagem (Screenshot / Design)
@@ -833,6 +982,142 @@ export default function App() {
           </div>
         </motion.section>
       </main>
+
+      {/* Vault Modal Overlay */}
+      <AnimatePresence>
+        {isVaultOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 lg:p-8"
+            onClick={() => setIsVaultOpen(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-full flex flex-col overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
+                    <Database className="w-5 h-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Knowledge Vault</h2>
+                    <p className="text-xs text-slate-400">Gerencie referências, design systems e snippets de código.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsVaultOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+                
+                {/* Upload Section */}
+                <div className="bg-slate-950/50 border border-slate-800 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center relative group hover:bg-slate-950 hover:border-indigo-500/50 transition-colors">
+                  <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Upload className="w-8 h-8 text-indigo-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-slate-200 mb-2">Upload Folder (Projeto Completo)</h3>
+                  <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">
+                    Selecione uma pasta contendo código, assets e design.json. Faremos a leitura de tudo de forma inteligente.
+                  </p>
+                  
+                  <div className="relative overflow-hidden inline-block">
+                    <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-indigo-500/20 flex items-center gap-2 relative z-0">
+                      <Plus className="w-4 h-4" />
+                      Selecionar Pasta
+                    </button>
+                    <input 
+                      type="file" 
+                      // @ts-ignore - webkitdirectory is non-standard but supported by most browsers
+                      webkitdirectory="true" 
+                      directory="true" 
+                      multiple 
+                      onChange={uploadFolderToVault}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                  </div>
+
+                  {uploadProgress && (
+                    <div className="mt-4 text-xs font-medium text-indigo-400 animate-pulse bg-indigo-500/10 px-4 py-2 rounded-lg border border-indigo-500/20">
+                      {uploadProgress}
+                    </div>
+                  )}
+                </div>
+
+                {/* File List */}
+                <div>
+                  <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-slate-400" />
+                    Arquivos Armazenados
+                  </h4>
+                  
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
+                    {isLoadingVault ? (
+                      <div className="p-8 flex justify-center">
+                        <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+                      </div>
+                    ) : vaultFiles.length === 0 ? (
+                      <div className="p-8 text-center text-slate-500 text-sm">
+                        O cofre está vazio. Faça upload de projetos para alimentar a IA.
+                      </div>
+                    ) : (
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-800 bg-slate-900/50">
+                            <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-slate-500 font-medium">Projeto</th>
+                            <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-slate-500 font-medium">Arquivo</th>
+                            <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-slate-500 font-medium">Tipo</th>
+                            <th className="px-4 py-3 text-[10px] uppercase tracking-widest text-slate-500 font-medium">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {vaultFiles.map((file) => (
+                            <tr key={file.id} className="border-b border-slate-800/50 hover:bg-slate-900/50 transition-colors">
+                              <td className="px-4 py-3 text-xs text-slate-300 font-medium">{file.project_name}</td>
+                              <td className="px-4 py-3 text-xs text-slate-400 truncate max-w-[200px]">{file.file_name}</td>
+                              <td className="px-4 py-3 text-xs">
+                                <span className={`px-2 py-0.5 rounded uppercase font-bold text-[9px] ${
+                                  file.file_type === 'image' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+                                  file.file_type === 'code' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
+                                  'bg-slate-800 text-slate-400'
+                                }`}>
+                                  {file.file_type}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <button 
+                                  onClick={async () => {
+                                    if (!supabase) return;
+                                    await supabase.from('knowledge_base').delete().eq('id', file.id);
+                                    fetchVaultFiles();
+                                  }}
+                                  className="text-slate-500 hover:text-red-400 transition-colors p-1"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
