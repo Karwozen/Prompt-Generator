@@ -309,6 +309,70 @@ export default function App() {
     }
   };
 
+  const uploadFilesToVault = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!supabase) {
+      alert('Configuração do Supabase ausente. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nas variáveis de ambiente.');
+      return;
+    }
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      let uploadedCount = 0;
+      const totalCount = files.length;
+      setUploadProgress(`Salvando arquivo 0 de ${totalCount}...`);
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileName = file.name;
+        const projectName = 'Arquivos Avulsos';
+
+        setUploadProgress(`Salvando arquivo ${i + 1} de ${totalCount}...`);
+
+        if (file.name.match(/\.(json|tsx|ts|jsx|js|css|txt|md|html)$/i)) {
+          const text = await file.text();
+          await supabase.from('knowledge_base').insert([
+            {
+              project_name: projectName,
+              file_name: fileName,
+              file_type: 'code',
+              content: text
+            }
+          ]);
+        } else if (file.name.match(/\.(png|jpg|jpeg|svg|webp|gif)$/i)) {
+          const timestamp = new Date().getTime();
+          const storagePath = `${projectName}/${timestamp}_${file.name}`;
+          
+          const { data, error } = await supabase.storage
+            .from('brand_assets')
+            .upload(storagePath, file);
+
+          if (data) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('brand_assets')
+              .getPublicUrl(storagePath);
+
+            await supabase.from('knowledge_base').insert([
+              {
+                project_name: projectName,
+                file_name: fileName,
+                file_type: 'image',
+                url: publicUrl
+              }
+            ]);
+          }
+        }
+        uploadedCount++;
+      }
+      setUploadProgress('');
+      fetchVaultFiles();
+    } catch (err: any) {
+      console.error('Upload failed', err);
+      setUploadProgress(`Erro no upload: ${err.message}`);
+      setTimeout(() => setUploadProgress(''), 3000);
+    }
+  };
+
   const toggleVaultFile = (file: any) => {
     setFormData(prev => {
       const isSelected = prev.selectedVaultFiles.some(f => f.id === file.id);
@@ -1025,25 +1089,40 @@ export default function App() {
                   <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <Upload className="w-8 h-8 text-indigo-400" />
                   </div>
-                  <h3 className="text-lg font-medium text-slate-200 mb-2">Upload Folder (Projeto Completo)</h3>
+                  <h3 className="text-lg font-medium text-slate-200 mb-2">Adicionar ao Cérebro (Upload)</h3>
                   <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">
-                    Selecione uma pasta contendo código, assets e design.json. Faremos a leitura de tudo de forma inteligente.
+                    Selecione uma pasta inteira ou arquivos individuais (Código, JSON, Imagens).
                   </p>
                   
-                  <div className="relative overflow-hidden inline-block">
-                    <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-indigo-500/20 flex items-center gap-2 relative z-0">
-                      <Plus className="w-4 h-4" />
-                      Selecionar Pasta
-                    </button>
-                    <input 
-                      type="file" 
-                      // @ts-ignore - webkitdirectory is non-standard but supported by most browsers
-                      webkitdirectory="true" 
-                      directory="true" 
-                      multiple 
-                      onChange={uploadFolderToVault}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    />
+                  <div className="flex gap-4 items-center justify-center">
+                    <div className="relative overflow-hidden inline-block">
+                      <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-indigo-500/20 flex items-center gap-2 relative z-0">
+                        <Plus className="w-4 h-4" />
+                        📁 Selecionar Pasta
+                      </button>
+                      <input 
+                        type="file" 
+                        // @ts-ignore - webkitdirectory is non-standard but supported by most browsers
+                        webkitdirectory="true" 
+                        directory="true" 
+                        multiple 
+                        onChange={uploadFolderToVault}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                    </div>
+
+                    <div className="relative overflow-hidden inline-block">
+                      <button className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-slate-900/20 flex items-center gap-2 relative z-0">
+                        <Plus className="w-4 h-4" />
+                        📄 Selecionar Arquivos
+                      </button>
+                      <input 
+                        type="file" 
+                        multiple 
+                        onChange={uploadFilesToVault}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                    </div>
                   </div>
 
                   {uploadProgress && (
