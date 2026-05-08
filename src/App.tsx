@@ -44,30 +44,42 @@ interface GenerationResult {
 }
 
 async function generateCroPrompt(data: any): Promise<GenerationResult> {
-  const basePrompt = `You are a Master Creative Director and Senior UI/UX Engineer. Your task is to generate a comprehensive prompt for an AI UI Generator (like v0.dev or Cursor) based on the user's inputs, scraped data, and reference images.
+  const basePrompt = `I am writing a prompt to use in an AI agent specialized in designing beautiful landing pages (like Replit Design Mode, v0.dev, or Cursor). In addition to React/Shadcn/Tailwind code generation, this agent can also generate components and UI structures.
 
-You MUST format your entire response exactly like the TEMPLATE below. Replace all the content inside the template with the specific details of the user's brand, niche, and selected sections. Do not output anything outside of this format.
+I need to give enough context to it so that it generates a design that matches my expectations.
+You are a Master Creative Director and Senior UI/UX Engineer. Your task is to generate this comprehensive prompt based on the user's inputs and reference images.
 
-USER INPUTS:
-Brand: ${data.name || '[Insert dynamic brand]'}
-Niche: ${data.niche || '[Insert dynamic niche]'}
-Persona: ${data.audience || 'Not provided'}
-Offer: ${data.offer || 'Not provided'}
-WhatsApp: ${data.whatsapp || 'Not provided'}
-Sections Requested: ${data.sections.join(', ')}
-${data.imageBase64 ? 'Visual Guidelines: Extracted from the provided image.' : 'Visual Guidelines: Extracted from the provided links (Instagram: ' + (data.instagram || 'N/A') + ', Maps: ' + (data.maps || 'N/A') +').'}
+USER INPUTS (Context for generation):
 
-TARGET OUTPUT TEMPLATE (Follow this structure perfectly, adapting colors, fonts, copy, and sections to the user's specific business):
-You are designing a landing page for [Brand Name], a [Niche/Description]. Follow the design.json below as your design system guidelines. The overall aesthetic should feel [Vibe/Mood], trustworthy, and [Adjective].
+Brand Name: ${data.name || '[Insert dynamic brand]'}
 
-Follow instructions below for copy and landing page content.
+Niche/Business: ${data.niche || '[Insert dynamic niche]'}
+
+Target Audience (Persona): ${data.audience || 'Not provided'}
+
+Irresistible Offer: ${data.offer || 'Not provided'}
+
+WhatsApp Contact: ${data.whatsapp || 'Not provided'}
+
+Sections Requested by User: ${data.sections.join(', ')}
+${data.imageBase64 ? '- Visual Guidelines: Deeply analyse the design of the attached screenshot.' : '- Visual Guidelines: Infer best modern design practices based on the niche.'}
+
+YOUR MISSION:
+
+${data.imageBase64 ? 'Deeply analyse the design of the attached screenshot. Capture high level guidelines for structure, spacing, fonts, colours, design style and design principles.' : 'Create a high-converting, modern design system.'}
+
+Generate the FINAL PROMPT following the strict template below, acting as if you are giving instructions to the UI AI. Adapt the aesthetic level of detail to the user's specific brand, colors, and niche.
+
+--- TARGET OUTPUT TEMPLATE (Adapt all bracketed info and content to the User Inputs) ---
+
+You are designing a landing page for ${data.name || '[Brand Name]'}, a ${data.niche || '[Niche]'}. Follow the design.json below as your design system guidelines. The overall aesthetic should feel premium, trustworthy, and modern. Follow instructions below for copy and landing page content.
 
 design.json
 {
 "designPrinciples": {
-"overall": "[Describe overall aesthetic]",
+"overall": "[Describe overall aesthetic based on image/niche]",
 "keywords": ["[Keyword 1]", "[Keyword 2]", "[...]"],
-"avoid": ["[Avoid 1]", "[Avoid 2]"]
+"avoid": ["generic templates", "cluttered UI", "outdated layouts"]
 },
 "colorPalette": {
 "primary": { "main": "[HEX]", "light": "[HEX]", "dark": "[HEX]" },
@@ -76,7 +88,7 @@ design.json
 "usage": { "backgrounds": ["..."], "text": { "headings": "...", "body": "..." }, "buttons": { "primary": "...", "secondary": "..." } }
 },
 "typography": {
-"fontFamilies": { "headings": { "family": "[Suggest Font]", "weight": "..." }, "body": { "family": "[Suggest Font]", "weight": "..." } },
+"fontFamilies": { "headings": { "family": "[Suggest Font based on image/niche]", "weight": "..." }, "body": { "family": "[Suggest Font]", "weight": "..." } },
 "scale": { "hero-h1": { "size": "clamp(2.5rem, 5vw, 4rem)" }, "h2": { "size": "clamp(2rem, 4vw, 3rem)" }, "h3": { "size": "1.25rem" }, "body": { "size": "1rem" } }
 },
 "spacing": {
@@ -93,46 +105,39 @@ design.json
 }
 }
 
-BRIEF: [Brand Name] Landing Page
-Create a premium landing page for [Brand Name]. DESIGN SYSTEM REFERENCE: Use the design.json above as the definitive style guide.
+BRIEF: ${data.name || '[Brand Name]'} Landing Page
+Create a premium landing page for ${data.name || '[Brand Name]'}. DESIGN SYSTEM REFERENCE: Use the design.json above as the definitive style guide.
 
 SECTIONS:
-[GENERATE THE SECTIONS HERE BASED ON THE USER'S SELECTION. Use the copy framework AIDA/PAS. For each section, provide:]
-Section [X]: [Section Name - e.g., Hero, Services, Location, FAQ, WhatsApp Integration]
+[GENERATE THE SECTIONS HERE BASED ON THE USER'S SELECTION: ${data.sections.join(', ')}. Use the copy framework AIDA/PAS. Write the actual persuasive copy in Portuguese]
+
+Section 1: [Section Name]
 
 Layout: [e.g., 2 columns]
 
 Background: [Color/HEX]
 
-Content: [Specify exactly the H1, H2, Subtitles, and bullet points. Write the actual persuasive copy in Portuguese]
+Content: [Specify H1/H2/Body text]
 
-UI Components: [Specify exactly what UI elements to generate, e.g., "Floating WhatsApp Button in the bottom right", "Interactive Map Card", "Bento Grid for Services"]
+UI Components: [Specify components, e.g., Bento Grid, Floating WhatsApp Button]
 
+[Continue generating the block above for EVERY section requested by the user...]
+
+--- END OF TARGET OUTPUT TEMPLATE ---
 
 OUTPUT FORMAT (JSON REQUIRED):
-Return STRICTLY a JSON object. Do not format with markdown blocks. Return exactly:
+Return STRICTLY a JSON object. Do not format with markdown blocks outside the JSON. Return exactly:
 {
-  "enhancedPrompt": "The FULL output text described in the TARGET OUTPUT TEMPLATE above (the introduction, the stringified design.json block, and the BRIEF sections block).",
-  "designJson": {
-    "colors": [
-      { "name": "Primary", "hex": "#HEX" },
-      { "name": "Accent", "hex": "#HEX" },
-      { "name": "Background", "hex": "#HEX" }
-    ],
-    "typography": {
-      "headings": "Font Family (e.g. Inter)",
-      "body": "Font Family (e.g. Roboto)"
-    },
-    "components": [
-      "Button",
-      "Card",
-      "Bento Grid"
-    ],
-    "designPrinciples": { ... },
-    "colorPalette": { ... },
-    "spacing": { ... },
-    "animations": { ... }
-  }
+"enhancedPrompt": "The FULL output text described in the TARGET OUTPUT TEMPLATE above (starting from 'You are designing a landing page...').",
+"designJson": {
+"colors": [
+{ "name": "Primary", "hex": "#HEX" },
+{ "name": "Accent", "hex": "#HEX" },
+{ "name": "Background", "hex": "#HEX" }
+],
+"typography": { "headings": "...", "body": "..." },
+"components": ["...", "..."]
+}
 }`;
 
   let finalContents: any;
@@ -166,9 +171,21 @@ Return STRICTLY a JSON object. Do not format with markdown blocks. Return exactl
     resultText = resultText.replace(/^```(json)?\n/, '').replace(/\n```$/, '');
     
     return JSON.parse(resultText) as GenerationResult;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro no scraping/geração:', error);
-    throw new Error('Não foi possível acessar os links ou gerar o prompt. Verifique se os links são públicos.');
+    
+    let errorMessage = 'Não foi possível acessar os links ou gerar o prompt. Verifique os dados inseridos.';
+    if (error?.message) {
+      if (error.message.includes('503') || error.message.includes('high demand') || error.message.includes('UNAVAILABLE')) {
+        errorMessage = 'O modelo de IA está com alta demanda no momento (Erro 503). Por favor, aguarde alguns instantes e tente novamente.';
+      } else {
+        errorMessage = `Erro na geração: ${error.message}`;
+      }
+    } else if (typeof error === 'object' && error?.error?.code === 503) {
+        errorMessage = 'O modelo de IA está com alta demanda no momento (Erro 503). Por favor, aguarde alguns instantes e tente novamente.';
+    }
+    
+    throw new Error(errorMessage);
   }
 }
 
